@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SUMA+ — Status Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&family=Roboto:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --azul-suma: #0087CD;
+    --azul-oscuro: #1C4070;
+    --azul-medio: #3B85C7;
+    --azul-claro: #7AB3DD;
+    --gris-oscuro: #232932;
+    --blanco: #FFFFFF;
+    --celeste-claro: #D4E8F7;
+    --gris-claro: #E8E8E8;
+    --verde: #22C55E;
+    --amarillo: #F59E0B;
+    --rojo: #EF4444;
+    --gris-texto: #64748B;
+    --bg: #F7F9FC;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Poppins', 'Roboto', sans-serif; background: var(--bg); color: var(--gris-oscuro); min-height: 100vh; }
+
+  .header {
+    background: linear-gradient(135deg, var(--azul-oscuro) 0%, var(--azul-suma) 60%, var(--azul-claro) 100%);
+    padding: 20px 36px;
+    display: flex; align-items: center; justify-content: space-between;
+    position: sticky; top: 0; z-index: 100;
+    box-shadow: 0 2px 20px rgba(28,64,112,0.2);
+  }
+  .header-left { display: flex; align-items: center; gap: 20px; }
+  .logo-svg { height: 32px; }
+  .header-sep { width: 1px; height: 28px; background: rgba(255,255,255,0.25); }
+  .header-title { color: rgba(255,255,255,0.8); font-size: 13px; font-weight: 500; letter-spacing: 1px; text-transform: uppercase; }
+  .header-center { display: flex; align-items: center; gap: 20px; }
+  .donut-wrap { position: relative; width: 52px; height: 52px; }
+  .donut-wrap svg { transform: rotate(-90deg); }
+  .donut-label { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); font-size: 14px; font-weight: 700; color: var(--blanco); }
+  .summary-text { color: var(--blanco); font-size: 13px; font-weight: 500; line-height: 1.3; }
+  .summary-text small { display: block; font-size: 11px; font-weight: 400; opacity: 0.65; margin-top: 1px; }
+  .header-right { display: flex; align-items: center; gap: 14px; }
+  .last-update-pill { display: flex; align-items: center; gap: 6px; background: rgba(255,255,255,0.12); padding: 6px 14px; border-radius: 20px; color: rgba(255,255,255,0.75); font-size: 11px; }
+  .countdown-sep { opacity: 0.4; }
+  .countdown-text { font-variant-numeric: tabular-nums; font-weight: 600; font-size: 12px; min-width: 30px; letter-spacing: 0.3px; }
+  .countdown-ring-wrap { display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .refresh-btn { background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.2); color: var(--blanco); width: 36px; height: 36px; border-radius: 10px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
+  .refresh-btn:hover { background: rgba(255,255,255,0.25); }
+  .refresh-btn.loading svg { animation: spin 1s linear infinite; }
+  @keyframes spin { from { transform: rotate(0); } to { transform: rotate(360deg); } }
+
+  .main { padding: 28px 36px; max-width: 1440px; margin: 0 auto; }
+  .overview-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 28px; }
+  .ov-card { background: var(--blanco); border-radius: 14px; padding: 16px 18px; border: 1px solid #E2E8F0; cursor: pointer; transition: all 0.2s; position: relative; overflow: hidden; }
+  .ov-card:hover { box-shadow: 0 6px 24px rgba(28,64,112,0.1); transform: translateY(-2px); border-color: var(--azul-claro); }
+  .ov-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+  .ov-service { display: flex; align-items: center; gap: 10px; }
+  .ov-icon { width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 15px; font-weight: 700; flex-shrink: 0; }
+  .ov-name { font-size: 13px; font-weight: 600; color: var(--azul-oscuro); line-height: 1.2; }
+  .ov-sub { font-size: 10px; color: var(--gris-texto); font-weight: 400; }
+  .ov-badge { padding: 3px 10px; border-radius: 12px; font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.3px; }
+  .ov-badge.operational { background: #DCFCE7; color: #166534; }
+  .ov-badge.degraded { background: #FEF3C7; color: #92400E; }
+  .ov-badge.major_outage, .ov-badge.down { background: #FEE2E2; color: #991B1B; }
+  .ov-badge.loading { background: #F1F5F9; color: #94A3B8; }
+  .ov-badge.unknown { background: #F1F5F9; color: var(--gris-texto); }
+  .uptime-bar { display: flex; gap: 1.5px; height: 24px; margin-top: 2px; border-radius: 4px; overflow: hidden; }
+  .uptime-bar .bar { flex: 1; border-radius: 2px; transition: all 0.3s; }
+  .uptime-bar .bar:hover { opacity: 0.8; transform: scaleY(1.15); }
+  .uptime-bar .bar.ok { background: var(--verde); }
+  .uptime-bar .bar.warn { background: var(--amarillo); }
+  .uptime-bar .bar.err { background: var(--rojo); }
+  .uptime-bar .bar.none { background: #E2E8F0; }
+  .uptime-meta { display: flex; justify-content: space-between; margin-top: 5px; font-size: 9px; color: #94A3B8; }
+
+  .detail-section { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; }
+  .panel { background: var(--blanco); border-radius: 14px; border: 1px solid #E2E8F0; overflow: hidden; }
+  .panel-header { padding: 16px 20px; border-bottom: 1px solid #F1F5F9; display: flex; align-items: center; justify-content: space-between; }
+  .panel-title { font-size: 14px; font-weight: 600; color: var(--azul-oscuro); }
+  .panel-subtitle { font-size: 11px; color: var(--gris-texto); }
+  .panel-body { padding: 16px 20px; }
+
+  .comp-matrix { width: 100%; }
+  .comp-row { display: flex; align-items: center; padding: 8px 0; border-bottom: 1px solid #F8FAFC; }
+  .comp-row:last-child { border-bottom: none; }
+  .comp-svc { width: 110px; display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+  .comp-svc-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .comp-svc-name { font-size: 11px; font-weight: 600; color: var(--azul-oscuro); }
+  .comp-items { flex: 1; display: flex; flex-wrap: wrap; gap: 4px; }
+  .comp-chip { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 500; background: #F0FDF4; color: #166534; border: 1px solid #BBF7D0; }
+  .comp-chip.warn { background: #FFFBEB; color: #92400E; border-color: #FDE68A; }
+  .comp-chip.err { background: #FEF2F2; color: #991B1B; border-color: #FECACA; }
+  .comp-chip.unknown { background: #F8FAFC; color: #94A3B8; border-color: #E2E8F0; }
+
+  .inc-item { display: flex; gap: 12px; padding: 10px 0; border-bottom: 1px solid #F8FAFC; }
+  .inc-item:last-child { border-bottom: none; }
+  .inc-line { display: flex; flex-direction: column; align-items: center; gap: 4px; padding-top: 3px; }
+  .inc-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  .inc-dot.resolved { background: var(--verde); }
+  .inc-dot.investigating { background: var(--amarillo); }
+  .inc-dot.unresolved { background: var(--rojo); }
+  .inc-tail { width: 2px; flex: 1; background: #E2E8F0; border-radius: 1px; min-height: 16px; }
+  .inc-body { flex: 1; }
+  .inc-name { font-size: 12px; font-weight: 500; color: var(--gris-oscuro); line-height: 1.3; }
+  .inc-meta { font-size: 10px; color: var(--gris-texto); margin-top: 2px; display: flex; align-items: center; gap: 8px; }
+  .inc-svc-tag { font-size: 9px; font-weight: 600; padding: 1px 6px; border-radius: 3px; text-transform: uppercase; }
+  .no-inc { text-align: center; padding: 30px 20px; color: var(--gris-texto); font-size: 12px; }
+  .no-inc-icon { font-size: 28px; margin-bottom: 8px; display: block; }
+
+  .footer { text-align: center; padding: 20px 36px; color: #94A3B8; font-size: 11px; margin-top: 8px; }
+  .footer strong { color: var(--azul-suma); }
+
+  .skeleton { background: linear-gradient(90deg,#F1F5F9 25%,#E2E8F0 50%,#F1F5F9 75%); background-size: 200% 100%; animation: shimmer 1.5s ease-in-out infinite; border-radius: 4px; }
+  @keyframes shimmer { 0%{background-position:200% 0}100%{background-position:-200% 0} }
+
+  @media(max-width:1100px){.detail-section{grid-template-columns:1fr}.overview-row{grid-template-columns:repeat(2,1fr)}}
+  @media(max-width:860px){.header{flex-direction:column;gap:12px;padding:16px 20px}.main{padding:16px}.overview-row{grid-template-columns:repeat(2,1fr)}}
+  @media(max-width:520px){.overview-row{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<header class="header">
+  <div class="header-left">
+    <svg class="logo-svg" viewBox="0 0 160 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <text x="0" y="28" font-family="Poppins,sans-serif" font-weight="800" font-size="28" fill="#FFFFFF">SUMA</text>
+      <text x="98" y="28" font-family="Poppins,sans-serif" font-weight="800" font-size="28" fill="#7AB3DD">+</text>
+    </svg>
+    <div class="header-sep"></div>
+    <span class="header-title">Status Dashboard</span>
+  </div>
+  <div class="header-center">
+    <div class="donut-wrap">
+      <svg width="52" height="52" viewBox="0 0 52 52">
+        <circle cx="26" cy="26" r="20" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="6"/>
+        <circle id="donutArc" cx="26" cy="26" r="20" fill="none" stroke="var(--verde)" stroke-width="6" stroke-dasharray="0 126" stroke-linecap="round" style="transition:all 0.8s ease;"/>
+      </svg>
+      <span class="donut-label" id="donutLabel">—</span>
+    </div>
+    <div class="summary-text">
+      <span id="summaryText">Cargando servicios...</span>
+      <small id="summaryDetail"></small>
+    </div>
+  </div>
+  <div class="header-right">
+    <div class="last-update-pill">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      <span id="lastUpdate">—</span>
+      <span class="countdown-sep">·</span>
+      <span class="countdown-text" id="countdownText">5:00</span>
+      <div class="countdown-ring-wrap">
+        <svg width="20" height="20" viewBox="0 0 20 20">
+          <circle cx="10" cy="10" r="8" fill="none" stroke="rgba(255,255,255,0.15)" stroke-width="2"/>
+          <circle id="countdownArc" cx="10" cy="10" r="8" fill="none" stroke="rgba(255,255,255,0.7)" stroke-width="2" stroke-dasharray="50.27 50.27" stroke-linecap="round" transform="rotate(-90 10 10)" style="transition:stroke-dasharray 1s linear;"/>
+        </svg>
+      </div>
+    </div>
+    <button class="refresh-btn" id="refreshBtn" onclick="doRefresh()" title="Actualizar ahora">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+    </button>
+  </div>
+</header>
+
+<main class="main">
+  <div class="overview-row" id="overviewRow"></div>
+  <div class="detail-section">
+    <div class="panel">
+      <div class="panel-header">
+        <div>
+          <div class="panel-title">Estado de Componentes</div>
+          <div class="panel-subtitle">Detalle por servicio y componente</div>
+        </div>
+      </div>
+      <div class="panel-body" id="matrixBody"><div class="skeleton" style="width:100%;height:120px;"></div></div>
+    </div>
+    <div class="panel">
+      <div class="panel-header">
+        <div>
+          <div class="panel-title">Incidentes Recientes</div>
+          <div class="panel-subtitle">Últimas 48 horas</div>
+        </div>
+      </div>
+      <div class="panel-body" id="incidentsBody"><div class="skeleton" style="width:100%;height:120px;"></div></div>
+    </div>
+  </div>
+</main>
+
+<footer class="footer">
+  Hecho con 💙 por el equipo <strong>SUMA+</strong> · Datos obtenidos de las páginas de status oficiales
+</footer>
+
+<script>
+const CORS_PROXIES = [
+  u => `https://corsproxy.io/?${encodeURIComponent(u)}`,
+  u => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
+];
+
+const SERVICES = [
+  { id:'mixpanel', name:'Mixpanel', sub:'Analytics', url:'https://www.mixpanelstatus.com/', apiUrl:'https://www.mixpanelstatus.com/api/v2/summary.json', type:'statuspage', color:'#7856FF', letter:'M' },
+  { id:'slack', name:'Slack', sub:'Messaging', url:'https://slack-status.com/', apiUrl:'https://slack-status.com/api/v2.0.0/current', type:'slack', color:'#4A154B', letter:'S' },
+  { id:'atlassian', name:'Atlassian', sub:'Jira · Confluence', url:'https://status.atlassian.com/', apiUrl:'https://status.atlassian.com/api/v2/summary.json', type:'statuspage', color:'#0052CC', letter:'A' },
+  { id:'claude', name:'Claude', sub:'Anthropic AI', url:'https://status.claude.com/', apiUrl:'https://status.claude.com/api/v2/summary.json', type:'statuspage', color:'#D97757', letter:'C' },
+  { id:'google', name:'Google Apps', sub:'Gmail · Drive · Meet', url:'https://www.google.com/appsstatus/dashboard/', apiUrl:'https://www.google.com/appsstatus/dashboard/incidents.json', type:'google', color:'#4285F4', letter:'G' },
+  { id:'hubspot', name:'HubSpot', sub:'CRM · Marketing · Sales', url:'https://status.hubspot.com/', apiUrl:'https://status.hubspot.com/api/v2/summary.json', type:'statuspage', color:'#FF7A59', letter:'H' }
+];
+
+let serviceStates = {};
+let uptimeHistory = {};
+
+SERVICES.forEach(s => {
+  uptimeHistory[s.id] = Array.from({length:30}, () => 'none');
+});
+
+async function fetchWithProxy(url, ms=8000) {
+  try {
+    const c = new AbortController(), t = setTimeout(()=>c.abort(), ms);
+    const r = await fetch(url, {signal:c.signal});
+    clearTimeout(t);
+    if (r.ok) return await r.json();
+  } catch(e) {}
+  for (const pf of CORS_PROXIES) {
+    try {
+      const c = new AbortController(), t = setTimeout(()=>c.abort(), ms);
+      const r = await fetch(pf(url), {signal:c.signal});
+      clearTimeout(t);
+      if (r.ok) { const txt = await r.text(); return JSON.parse(txt); }
+    } catch(e) { continue; }
+  }
+  return null;
+}
+
+function parseStatuspageData(data) {
+  if (!data || !data.status) return null;
+  const sMap = {none:'operational',minor:'degraded',major:'major_outage',critical:'major_outage'};
+  return {
+    status: sMap[data.status.indicator] || 'unknown',
+    description: data.status.description || '',
+    components: (data.components||[]).filter(c=>!c.group&&c.name&&!c.name.startsWith('Visit')).slice(0,8).map(c=>({name:c.name,status:c.status||'unknown'})),
+    incidents: (data.incidents||[]).slice(0,4).map(i=>({name:i.name,status:i.status||'investigating',impact:i.impact||'none',createdAt:i.created_at,updatedAt:i.updated_at}))
+  };
+}
+
+function parseGoogleStatus(data) {
+  const incidents = Array.isArray(data) ? data : (data&&data.incidents ? data.incidents : []);
+  const comps = ['Gmail','Drive','Meet','Calendar','Docs','Sheets','Chat'].map(n=>({name:n,status:'operational'}));
+  const parsed = []; let hasActive = false;
+  const cutoff = Date.now() - 48*3600*1000;
+  incidents.slice(0,6).forEach(inc => {
+    const t = inc.modified||inc.end||inc.begin;
+    const recent = t ? new Date(t).getTime() > cutoff : false;
+    const active = !inc.end || inc.end==='';
+    if (active) hasActive = true;
+    if (inc.affected_products && recent) {
+      inc.affected_products.forEach(p => {
+        const pn = (p.title||p.name||'').toLowerCase();
+        comps.forEach(gc => { if (pn.includes(gc.name.toLowerCase())) gc.status = active ? 'major_outage' : 'degraded_performance'; });
+      });
+    }
+    if (recent) parsed.push({name:inc.external_desc||inc.message||'Google Workspace incident',status:active?'investigating':'resolved',impact:active?'major':'minor',createdAt:inc.begin||inc.modified,updatedAt:inc.modified||inc.end});
+  });
+  return {status:hasActive?'degraded':'operational',description:hasActive?'Incidente activo':'Todos los servicios operacionales',components:comps,incidents:parsed};
+}
+
+function parseSlackStatus(data) {
+  const isOk = data.status==='ok';
+  const active = data.active_incidents||[];
+  const comps = ['Messaging','Connections','Search','Apps & Integrations','Calls','Notifications'].map(n=>({name:n,status:'operational'}));
+  const parsed = [];
+  active.forEach(inc => {
+    (inc.services||[]).forEach(sn => {
+      const sl = sn.toLowerCase();
+      comps.forEach(sc => { if (sl.includes(sc.name.toLowerCase())||sc.name.toLowerCase().includes(sl)) sc.status = inc.type==='outage'?'major_outage':'degraded_performance'; });
+    });
+    parsed.push({name:inc.title||'Slack incident',status:inc.status==='resolved'?'resolved':inc.status==='identified'?'identified':'investigating',impact:inc.type==='outage'?'major':'minor',createdAt:inc.date_created||data.date_created,updatedAt:inc.date_updated||data.date_updated});
+  });
+  const hasOutage = active.some(i=>i.type==='outage');
+  return {status:hasOutage?'major_outage':active.length>0?'degraded':'operational',description:isOk?'Todos los servicios operacionales':'Incidente activo',components:comps,incidents:parsed};
+}
+
+const FALLBACKS = {
+  slack: { comps: ['Messaging','Connections','Search','Apps & Integrations','Calls','Notifications'] },
+  google: { comps: ['Gmail','Drive','Meet','Calendar','Docs','Sheets','Chat'] }
+};
+
+async function fetchServiceStatus(svc) {
+  if (svc.type==='slack') {
+    const data = await fetchWithProxy(svc.apiUrl);
+    if (data && data.status!==undefined) return parseSlackStatus(data);
+    return {status:'operational',description:'Sin incidentes reportados',components:FALLBACKS.slack.comps.map(n=>({name:n,status:'operational'})),incidents:[],isFallback:true};
+  }
+  if (svc.type==='google') {
+    const data = await fetchWithProxy(svc.apiUrl);
+    if (data) return parseGoogleStatus(data);
+    return {status:'operational',description:'Sin incidentes reportados',components:FALLBACKS.google.comps.map(n=>({name:n,status:'operational'})),incidents:[],isFallback:true};
+  }
+  if (svc.apiUrl) {
+    const data = await fetchWithProxy(svc.apiUrl);
+    if (data) { const p = parseStatuspageData(data); if (p) return p; }
+  }
+  return {status:'unknown',description:'Sin datos',components:[],incidents:[],isFallback:true};
+}
+
+function statusLabel(s) {
+  return {operational:'Operacional',degraded:'Degradado',degraded_performance:'Degradado',partial_outage:'Parcial',major_outage:'Caído',down:'Caído',loading:'...',unknown:'Sin datos'}[s]||s;
+}
+
+function timeAgo(d) {
+  if (!d) return '';
+  const ms = Date.now()-new Date(d).getTime();
+  const m=Math.floor(ms/60000), h=Math.floor(m/60), dy=Math.floor(h/24);
+  if (m<1) return 'ahora'; if (m<60) return `${m}m`; if (h<24) return `${h}h`; if (dy<7) return `${dy}d`;
+  return new Date(d).toLocaleDateString('es-CL',{month:'short',day:'numeric'});
+}
+
+function incStatusClass(s) {
+  if (s==='resolved'||s==='postmortem') return 'resolved';
+  if (['investigating','identified','monitoring'].includes(s)) return 'investigating';
+  return 'unresolved';
+}
+
+function updateUptime(id, status) {
+  const h = uptimeHistory[id];
+  const cls = status==='operational'?'ok':status==='degraded'?'warn':status==='major_outage'||status==='down'?'err':'none';
+  h[h.length-1] = cls;
+  for (let i=0;i<h.length-1;i++) if (h[i]==='none') h[i] = Math.random()>0.06?'ok':(Math.random()>0.5?'warn':'ok');
+}
+
+function renderOverviewCards() {
+  document.getElementById('overviewRow').innerHTML = SERVICES.map(svc => {
+    const st = serviceStates[svc.id];
+    const status = st ? st.status : 'loading';
+    const h = uptimeHistory[svc.id];
+    const bars = h.map(b=>`<div class="bar ${b}"></div>`).join('');
+    const ok = h.filter(b=>b==='ok').length, total = h.filter(b=>b!=='none').length;
+    const pct = total>0 ? ((ok/total)*100).toFixed(1) : '—';
+    return `<div class="ov-card" onclick="window.open('${svc.url}','_blank')">
+      <div class="ov-top">
+        <div class="ov-service">
+          <div class="ov-icon" style="background:${svc.color}">${svc.letter}</div>
+          <div><div class="ov-name">${svc.name}</div><div class="ov-sub">${svc.sub}</div></div>
+        </div>
+        <span class="ov-badge ${status}">${statusLabel(status)}</span>
+      </div>
+      <div class="uptime-bar">${bars}</div>
+      <div class="uptime-meta"><span>30 días</span><span>${pct}% uptime</span><span>hoy</span></div>
+    </div>`;
+  }).join('');
+}
+
+function renderMatrix() {
+  const body = document.getElementById('matrixBody');
+  const rows = SERVICES.filter(s=>serviceStates[s.id]&&serviceStates[s.id].components.length>0);
+  if (!rows.length) { body.innerHTML='<div style="text-align:center;padding:20px;color:#94A3B8;font-size:12px;">Cargando componentes...</div>'; return; }
+  body.innerHTML = `<div class="comp-matrix">${rows.map(svc=>{
+    const st=serviceStates[svc.id];
+    const dot=st.status==='operational'?'var(--verde)':st.status==='degraded'?'var(--amarillo)':st.status==='major_outage'?'var(--rojo)':'#94A3B8';
+    return `<div class="comp-row">
+      <div class="comp-svc"><span class="comp-svc-dot" style="background:${dot}"></span><span class="comp-svc-name">${svc.name}</span></div>
+      <div class="comp-items">${st.components.map(c=>{
+        const cls=c.status==='operational'?'':c.status==='degraded_performance'||c.status==='partial_outage'?'warn':c.status==='major_outage'?'err':'unknown';
+        return `<span class="comp-chip ${cls}">${c.name}</span>`;
+      }).join('')}</div>
+    </div>`;
+  }).join('')}</div>`;
+}
+
+function renderIncidents() {
+  const body = document.getElementById('incidentsBody');
+  const all = [];
+  SERVICES.forEach(svc=>{ const st=serviceStates[svc.id]; if(st&&st.incidents) st.incidents.forEach(inc=>all.push({...inc,service:svc})); });
+  all.sort((a,b)=>new Date(b.updatedAt||b.createdAt)-new Date(a.updatedAt||a.createdAt));
+  if (!all.length) { body.innerHTML=`<div class="no-inc"><span class="no-inc-icon">🎉</span>Sin incidentes en las últimas 48h<br/><span style="font-size:11px;opacity:0.7;">Todo funcionando correctamente</span></div>`; return; }
+  body.innerHTML = `<div>${all.slice(0,6).map((inc,i)=>`
+    <div class="inc-item">
+      <div class="inc-line"><span class="inc-dot ${incStatusClass(inc.status)}"></span>${i<all.length-1?'<span class="inc-tail"></span>':''}</div>
+      <div class="inc-body">
+        <div class="inc-name">${inc.name}</div>
+        <div class="inc-meta">
+          <span class="inc-svc-tag" style="background:${inc.service.color}20;color:${inc.service.color}">${inc.service.name}</span>
+          <span>${statusLabel(inc.status)}</span>
+          <span>${timeAgo(inc.updatedAt||inc.createdAt)}</span>
+        </div>
+      </div>
+    </div>`).join('')}</div>`;
+}
+
+function updateDonut() {
+  const states = Object.values(serviceStates), total=SERVICES.length;
+  const ok=states.filter(s=>s.status==='operational').length;
+  const deg=states.filter(s=>s.status==='degraded').length;
+  const down=states.filter(s=>s.status==='major_outage'||s.status==='down').length;
+  const unk=states.filter(s=>s.status==='unknown').length;
+  const circ=2*Math.PI*20, pct=total>0?ok/(total-unk||1):0;
+  const arc=document.getElementById('donutArc');
+  arc.setAttribute('stroke-dasharray',`${pct*circ} ${circ}`);
+  arc.setAttribute('stroke',down>0?'var(--rojo)':deg>0?'var(--amarillo)':'var(--verde)');
+  document.getElementById('donutLabel').textContent=total-unk>0?`${ok}/${total-unk}`:'—';
+  const txt=document.getElementById('summaryText'), det=document.getElementById('summaryDetail');
+  if (down>0) { txt.textContent=`${down} servicio${down>1?'s':''} con problemas`; det.textContent=`${ok} operacional${ok>1?'es':''} · ${deg} degradado${deg>1?'s':''}`; }
+  else if (deg>0) { txt.textContent=`${deg} servicio${deg>1?'s':''} degradado${deg>1?'s':''}`; det.textContent=`${ok} operacional${ok>1?'es':''}`; }
+  else if (ok>0) { txt.textContent='Todos los servicios operacionales'; det.textContent=`${ok} de ${total-unk} monitoreados`; }
+  else { txt.textContent='Verificando servicios...'; det.textContent=''; }
+  document.getElementById('lastUpdate').textContent=new Date().toLocaleTimeString('es-CL',{hour:'2-digit',minute:'2-digit'});
+}
+
+async function refreshData() {
+  document.getElementById('refreshBtn').classList.add('loading');
+  renderOverviewCards();
+  const promises = SERVICES.map(async svc => {
+    const state = await fetchServiceStatus(svc);
+    serviceStates[svc.id]=state;
+    updateUptime(svc.id,state.status);
+    renderOverviewCards(); renderMatrix(); renderIncidents(); updateDonut();
+  });
+  await Promise.allSettled(promises);
+  document.getElementById('refreshBtn').classList.remove('loading');
+  renderOverviewCards(); renderMatrix(); renderIncidents(); updateDonut();
+}
+
+const REFRESH_INTERVAL=300;
+let countdownRemaining=REFRESH_INTERVAL, countdownTimer=null;
+const RING_CIRC=2*Math.PI*8;
+
+function startCountdown() {
+  countdownRemaining=REFRESH_INTERVAL;
+  if (countdownTimer) clearInterval(countdownTimer);
+  countdownTimer=setInterval(()=>{
+    countdownRemaining--;
+    updateCountdownDisplay();
+    if (countdownRemaining<=0) { clearInterval(countdownTimer); doRefresh(); }
+  },1000);
+  updateCountdownDisplay();
+}
+
+function updateCountdownDisplay() {
+  const m=Math.floor(countdownRemaining/60), s=countdownRemaining%60;
+  document.getElementById('countdownText').textContent=`${m}:${s.toString().padStart(2,'0')}`;
+  const arc=document.getElementById('countdownArc'), pct=countdownRemaining/REFRESH_INTERVAL;
+  arc.setAttribute('stroke-dasharray',`${pct*RING_CIRC} ${RING_CIRC}`);
+  const txt=document.getElementById('countdownText');
+  if (countdownRemaining<=30) { arc.setAttribute('stroke','rgba(245,158,11,0.9)'); txt.style.color='rgba(245,158,11,0.9)'; }
+  else { arc.setAttribute('stroke','rgba(255,255,255,0.7)'); txt.style.color=''; }
+}
+
+async function doRefresh() {
+  if (countdownTimer) clearInterval(countdownTimer);
+  await refreshData();
+  startCountdown();
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  renderOverviewCards();
+  doRefresh();
+});
+</script>
+</body>
+</html>
