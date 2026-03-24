@@ -402,7 +402,7 @@ function updateDonut() {
   else if (deg>0) { txt.textContent=`${deg} servicio${deg>1?'s':''} degradado${deg>1?'s':''}`; det.textContent=`${ok} operacional${ok>1?'es':''}`; }
   else if (ok>0) { txt.textContent='Todos los servicios operacionales'; det.textContent=`${ok} de ${total-unk} monitoreados`; }
   else { txt.textContent='Verificando servicios...'; det.textContent=''; }
-  document.getElementById('lastUpdate').textContent=new Date().toLocaleTimeString('es-CL',{hour:'2-digit',minute:'2-digit'});
+  document.getElementById('lastUpdate').textContent=new Date().toLocaleTimeString('es-CL',{hour:'2-digit',minute:'2-digit',hour12:false});
 }
 
 async function refreshData() {
