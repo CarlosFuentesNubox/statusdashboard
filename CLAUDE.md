@@ -30,6 +30,15 @@ Mixpanel, Slack, Atlassian (Jira/Confluence), Claude (Anthropic), Google Apps, H
 - **Component matrix**: per-service breakdown of sub-components and their status
 - **Incidents panel**: aggregated recent incidents from all services, sorted by recency
 
+### CORS Proxy Fallback Chain
+`fetchWithProxy(url)` tries a direct fetch first, then falls through `CORS_PROXIES` array in order. If all fail, returns `null` and the service renders with fallback "operational" state (`isFallback: true`). Timeout per attempt: 8 seconds.
+
+### Adding a New Service
+1. Add entry to `SERVICES` array with `id`, `name`, `sub`, `url`, `apiUrl`, `type`, `color`, `letter`
+2. If the API format isn't `statuspage`, `slack`, or `google`, create a new `parse*` function
+3. If the service needs component fallbacks, add to `FALLBACKS` object
+4. The UI auto-renders — no template changes needed
+
 ### Key Globals
 - `serviceStates` — object mapping service id to parsed status data
 - `uptimeHistory` — object mapping service id to 30-element array of day statuses (`ok`/`warn`/`err`/`none`)

@@ -55,6 +55,10 @@
   .overview-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 28px; }
   .ov-card { background: var(--blanco); border-radius: 14px; padding: 16px 18px; border: 1px solid #E2E8F0; cursor: pointer; transition: all 0.2s; position: relative; overflow: hidden; }
   .ov-card:hover { box-shadow: 0 6px 24px rgba(28,64,112,0.1); transform: translateY(-2px); border-color: var(--azul-claro); }
+  .ov-card.degraded { background: #FFF8F0; border-color: #E8860C; }
+  .ov-card.degraded:hover { border-color: #C2710A; box-shadow: 0 6px 24px rgba(232,134,12,0.15); }
+  .ov-card.major_outage { background: #FFF5F5; border-color: #DC2626; }
+  .ov-card.major_outage:hover { border-color: #B91C1C; box-shadow: 0 6px 24px rgba(220,38,38,0.15); }
   .ov-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
   .ov-service { display: flex; align-items: center; gap: 10px; }
   .ov-icon { width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 15px; font-weight: 700; flex-shrink: 0; }
@@ -96,6 +100,8 @@
 
   .inc-item { display: flex; gap: 12px; padding: 10px 0; border-bottom: 1px solid #F8FAFC; }
   .inc-item:last-child { border-bottom: none; }
+  .panel.has-warning { background: #FFF8F0; border-color: #E8860C; }
+  .panel.has-outage { background: #FFF5F5; border-color: #DC2626; }
   .inc-line { display: flex; flex-direction: column; align-items: center; gap: 4px; padding-top: 3px; }
   .inc-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
   .inc-dot.resolved { background: var(--verde); }
@@ -175,7 +181,7 @@
       </div>
       <div class="panel-body" id="matrixBody"><div class="skeleton" style="width:100%;height:120px;"></div></div>
     </div>
-    <div class="panel">
+    <div class="panel" id="incidentsPanel">
       <div class="panel-header">
         <div>
           <div class="panel-title">Incidentes Recientes</div>
@@ -335,7 +341,7 @@ function renderOverviewCards() {
     const bars = h.map(b=>`<div class="bar ${b}"></div>`).join('');
     const ok = h.filter(b=>b==='ok').length, total = h.filter(b=>b!=='none').length;
     const pct = total>0 ? ((ok/total)*100).toFixed(1) : '—';
-    return `<div class="ov-card" onclick="window.open('${svc.url}','_blank')">
+    return `<div class="ov-card ${status}" onclick="window.open('${svc.url}','_blank')">
       <div class="ov-top">
         <div class="ov-service">
           <div class="ov-icon" style="background:${svc.color}">${svc.letter}</div>
@@ -368,10 +374,16 @@ function renderMatrix() {
 
 function renderIncidents() {
   const body = document.getElementById('incidentsBody');
+  const panel = document.getElementById('incidentsPanel');
   const all = [];
   SERVICES.forEach(svc=>{ const st=serviceStates[svc.id]; if(st&&st.incidents) st.incidents.forEach(inc=>all.push({...inc,service:svc})); });
   all.sort((a,b)=>new Date(b.updatedAt||b.createdAt)-new Date(a.updatedAt||a.createdAt));
+  panel.classList.remove('has-warning','has-outage');
   if (!all.length) { body.innerHTML=`<div class="no-inc"><span class="no-inc-icon">🎉</span>Sin incidentes en las últimas 48h<br/><span style="font-size:11px;opacity:0.7;">Todo funcionando correctamente</span></div>`; return; }
+  const hasOutage = all.some(inc=>incStatusClass(inc.status)==='unresolved');
+  const hasWarning = all.some(inc=>incStatusClass(inc.status)==='investigating');
+  if (hasOutage) panel.classList.add('has-outage');
+  else if (hasWarning) panel.classList.add('has-warning');
   body.innerHTML = `<div>${all.slice(0,6).map((inc,i)=>`
     <div class="inc-item">
       <div class="inc-line"><span class="inc-dot ${incStatusClass(inc.status)}"></span>${i<all.length-1?'<span class="inc-tail"></span>':''}</div>
